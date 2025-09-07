@@ -4,17 +4,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-import db
+import db.config_db as config_db
 from router.goldRoutes import router as gold_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await db.init_db()
+    await config_db.init_db()
     try:
         yield
     finally:
-        await db.engine.dispose()
+        await config_db.engine.dispose()
 
 
 app = FastAPI(lifespan=lifespan)

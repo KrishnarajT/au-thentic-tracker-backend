@@ -11,9 +11,9 @@ from fastapi import Query
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from db.db import get_session
-from db.db import GoldPurchase, GoldPurchaseCreate, GoldPurchaseUpdate, GoldPrice
-from constants.constants import PricePerGramResponse
+from db.config_db import get_session
+from db.models import GoldPurchase, GoldPurchaseCreate, GoldPurchaseUpdate, GoldPrice
+from constants.schemas import PricePerGramResponse
 
 router = APIRouter(tags=["gold"])
 
