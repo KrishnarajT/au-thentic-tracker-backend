@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+
 class PricePerGramResponse(BaseModel):
     price_per_gram: float = Field(..., alias="pricePerGram")
 

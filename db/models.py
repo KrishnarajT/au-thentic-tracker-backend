@@ -1,10 +1,12 @@
 # models.py
-from typing import Optional
-from datetime import date
 import uuid
+from datetime import date
+from typing import Optional
 
 from sqlmodel import SQLModel, Field
-from settings import DB_SCHEMA
+
+from constants.constants import DB_SCHEMA
+
 
 class Base(SQLModel):
     __table_args__ = {"schema": DB_SCHEMA}

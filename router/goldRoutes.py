@@ -1,27 +1,27 @@
 # router/goldRoutes.py
 import logging
 import os
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Response
-from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
-import httpx
 from datetime import date as dt_date
 from datetime import datetime
+from typing import List, Optional
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi import Query
-from schemas import PricePerGramResponse
-from db import get_session
-from models import GoldPurchase, GoldPurchaseCreate, GoldPurchaseUpdate, GoldPrice
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from db.db import get_session
+from db.db import GoldPurchase, GoldPurchaseCreate, GoldPurchaseUpdate, GoldPrice
+from constants.constants import PricePerGramResponse
 
 router = APIRouter(tags=["gold"])
+
 
 # --- Gold Purchases CRUD --- #
 
 @router.get("/gold-purchases", response_model=List[GoldPurchase])
-async def list_purchases(
-    userId: Optional[str] = None,
-    session: AsyncSession = Depends(get_session),
-):
+async def list_purchases(userId: Optional[str] = None, session: AsyncSession = Depends(get_session), ):
     """
     GET /api/gold-purchases?userId=abc (optional)
     """
@@ -33,10 +33,7 @@ async def list_purchases(
 
 
 @router.post("/gold-purchases", response_model=GoldPurchase, status_code=status.HTTP_201_CREATED)
-async def create_purchase(
-    payload: GoldPurchaseCreate,
-    session: AsyncSession = Depends(get_session),
-):
+async def create_purchase(payload: GoldPurchaseCreate, session: AsyncSession = Depends(get_session), ):
     gp = GoldPurchase(**payload.dict())
     session.add(gp)
     await session.commit()
@@ -45,11 +42,8 @@ async def create_purchase(
 
 
 @router.put("/gold-purchases/{purchase_id}", response_model=GoldPurchase)
-async def update_purchase(
-    purchase_id: str,
-    payload: GoldPurchaseUpdate,
-    session: AsyncSession = Depends(get_session),
-):
+async def update_purchase(purchase_id: str, payload: GoldPurchaseUpdate,
+        session: AsyncSession = Depends(get_session), ):
     gp = await session.get(GoldPurchase, purchase_id)
     if not gp:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase not found")
@@ -65,10 +59,7 @@ async def update_purchase(
 
 
 @router.delete("/gold-purchases/{purchase_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_purchase(
-    purchase_id: str,
-    session: AsyncSession = Depends(get_session),
-):
+async def delete_purchase(purchase_id: str, session: AsyncSession = Depends(get_session), ):
     gp = await session.get(GoldPurchase, purchase_id)
     if not gp:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase not found")
@@ -83,16 +74,11 @@ async def delete_purchase(
 # ---------------------------------------------------------------------
 logger = logging.getLogger(__name__)
 
-@router.get(
-    "/gold-price",
-    response_model=PricePerGramResponse,
-    response_model_by_alias=True,
-    summary="Current gold price per gram (24k)",
-)
-async def get_current_gold_price(
-    currency: Optional[str] = Query("INR", min_length=3, max_length=3),
-    session: AsyncSession = Depends(get_session),
-):
+
+@router.get("/gold-price", response_model=PricePerGramResponse, response_model_by_alias=True,
+    summary="Current gold price per gram (24k)", )
+async def get_current_gold_price(currency: Optional[str] = Query("INR", min_length=3, max_length=3),
+        session: AsyncSession = Depends(get_session), ):
     """
     Returns cached price from DB if available for today's date and currency.
     Otherwise falls back to external GoldAPI using multiple keys and stores the successful result.
@@ -109,12 +95,8 @@ async def get_current_gold_price(
         return PricePerGramResponse(price_per_gram=float(cached.price_per_gram))
 
     # 2) No cached value -> call upstream (existing logic)
-    api_keys: List[Optional[str]] = [
-        os.getenv("GOLDAPI_API_KEY"),
-        os.getenv("GOLDAPI_API_KEY_2"),
-        os.getenv("GOLDAPI_API_KEY_3"),
-        os.getenv("GOLDAPI_API_KEY_4"),
-    ]
+    api_keys: List[Optional[str]] = [os.getenv("GOLDAPI_API_KEY"), os.getenv("GOLDAPI_API_KEY_2"),
+        os.getenv("GOLDAPI_API_KEY_3"), os.getenv("GOLDAPI_API_KEY_4"), ]
     api_keys = [k for k in api_keys if k]
 
     if not api_keys:
@@ -138,10 +120,8 @@ async def get_current_gold_price(
         except httpx.HTTPStatusError as exc:
             status_code = exc.response.status_code
             text_preview = exc.response.text[:200] if exc.response.text else ""
-            logger.warning(
-                "GoldAPI returned status %s for key #%d. Response preview: %s",
-                status_code, idx, text_preview
-            )
+            logger.warning("GoldAPI returned status %s for key #%d. Response preview: %s", status_code, idx,
+                text_preview)
             continue
         except Exception as exc:
             logger.exception("Unexpected error using GoldAPI key #%d: %s", idx, exc)
@@ -161,8 +141,7 @@ async def get_current_gold_price(
         try:
             gp = GoldPrice(fetch_date=today, currency=currency, price_per_gram=price_val)
             session.add(gp)
-            await session.commit()
-            # no need to await session.refresh(gp) for this small cache but ok to do if you prefer
+            await session.commit()  # no need to await session.refresh(gp) for this small cache but ok to do if you prefer
         except Exception:
             # Non-fatal: log but still return the value
             logger.exception("Failed to persist gold price for %s %s to DB", currency, today)
@@ -173,14 +152,10 @@ async def get_current_gold_price(
     raise HTTPException(status_code=503, detail="Upstream gold price service unavailable")
 
 
-
 # place this function in router/goldRoutes.py along with your other endpoints
 @router.get("/gold-price/historical", response_model=PricePerGramResponse, response_model_by_alias=True)
-async def get_historical_price(
-    date: str,
-    currency: Optional[str] = Query("INR", min_length=3, max_length=3),
-    session: AsyncSession = Depends(get_session),
-):
+async def get_historical_price(date: str, currency: Optional[str] = Query("INR", min_length=3, max_length=3),
+        session: AsyncSession = Depends(get_session), ):
     """
     Returns pricePerGram for the requested date (YYYY-MM-DD) and currency.
     1) Try DB cache first (gold_prices table).
@@ -203,12 +178,8 @@ async def get_historical_price(
         return PricePerGramResponse(price_per_gram=float(cached.price_per_gram))
 
     # 2) Upstream: try GoldAPI historical endpoint with multiple keys
-    api_keys: List[Optional[str]] = [
-        os.getenv("GOLDAPI_API_KEY"),
-        os.getenv("GOLDAPI_API_KEY_2"),
-        os.getenv("GOLDAPI_API_KEY_3"),
-        os.getenv("GOLDAPI_API_KEY_4"),
-    ]
+    api_keys: List[Optional[str]] = [os.getenv("GOLDAPI_API_KEY"), os.getenv("GOLDAPI_API_KEY_2"),
+        os.getenv("GOLDAPI_API_KEY_3"), os.getenv("GOLDAPI_API_KEY_4"), ]
     api_keys = [k for k in api_keys if k]
     if not api_keys:
         logger.error("No GoldAPI keys configured (GOLDAPI_API_KEY* env vars missing)")
@@ -233,10 +204,8 @@ async def get_historical_price(
         except httpx.HTTPStatusError as exc:
             status_code = exc.response.status_code
             text_preview = exc.response.text[:200] if exc.response.text else ""
-            logger.warning(
-                "GoldAPI historical returned status %s for key #%d. Response preview: %s",
-                status_code, idx, text_preview
-            )
+            logger.warning("GoldAPI historical returned status %s for key #%d. Response preview: %s", status_code, idx,
+                text_preview)
             continue
         except Exception as exc:
             logger.exception("Unexpected error using GoldAPI key #%d (historical): %s", idx, exc)
@@ -244,7 +213,8 @@ async def get_historical_price(
 
         # verify payload contains expected price key
         if not isinstance(data, dict) or price_key not in data:
-            logger.warning("GoldAPI historical payload missing '%s' with key #%d; payload: %s", price_key, idx, str(data)[:200])
+            logger.warning("GoldAPI historical payload missing '%s' with key #%d; payload: %s", price_key, idx,
+                           str(data)[:200])
             continue
 
         try:
