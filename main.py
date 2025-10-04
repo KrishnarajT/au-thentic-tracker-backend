@@ -27,7 +27,7 @@ app.add_middleware(CORSMiddleware,
                    allow_credentials=True, allow_methods=["*"], allow_headers=["*"], )
 
 # Mount router under /api so frontend's API_BASE_URL + paths match
-app.include_router(gold_router, prefix="/api")
+app.include_router(gold_router)
 
 
 # basic healthcheck
