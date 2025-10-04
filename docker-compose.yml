@@ -1,16 +1,14 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:16
-    container_name: authentik_postgres
+    container_name: authentic_tracker_postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: N7eqrd4HSPU18
       POSTGRES_DB: authentik
     ports:
-      - "5432:5432"
+      - "5444:5432"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,3 +17,15 @@ services:
       retries: 5
       start_period: 15s
       timeout: 5s
+
+  authentic-backend:
+    build: .
+    container_name: authentic_backend
+    env_file: .env
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    restart: unless-stopped
