@@ -23,7 +23,7 @@ app = FastAPI(lifespan=lifespan)
 
 # CORS - allow your frontend (adjust origins)
 app.add_middleware(CORSMiddleware,
-                   allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://your-nas-ip:port"],
+                   allow_origins=["http://localhost:5000", "https://api-get-away.krishnarajthadesar.in/"],
                    allow_credentials=True, allow_methods=["*"], allow_headers=["*"], )
 
 # Mount router under /api so frontend's API_BASE_URL + paths match
@@ -50,3 +50,4 @@ async def auth_check(request: Request):
 # 1. do some check that we trust the user email only when its coming from our api-gateway
 # 2. deny any request without that private key from api-gateway
 # 3. use the user sub or email in our db queries and stuff
+# 4. refreshing tokens periodically without notifying frontend.
