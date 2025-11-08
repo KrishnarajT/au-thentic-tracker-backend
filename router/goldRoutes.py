@@ -2,7 +2,7 @@
 import logging
 import os
 from datetime import date as dt_date
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 import httpx
@@ -148,8 +148,16 @@ async def get_current_gold_price(currency: Optional[str] = Query("INR", min_leng
 
         return PricePerGramResponse(price_per_gram=price_val)
 
-    logger.error("All GoldAPI keys exhausted or failed for URL=%s", url)
-    raise HTTPException(status_code=503, detail="Upstream gold price service unavailable")
+    # 3) Final fallback: Check for the latest record in the same month
+    month_start = today.replace(day=1)
+    month_end = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    q = select(GoldPrice).where(GoldPrice.fetch_date >= month_start).where(GoldPrice.fetch_date <= month_end).where(GoldPrice.currency == currency).order_by(GoldPrice.fetch_date.desc())
+    result = await session.exec(q)
+    latest_in_month = result.first()
+    if latest_in_month:
+        return PricePerGramResponse(price_per_gram=float(latest_in_month.price_per_gram))
+
+    raise HTTPException(status_code=503, detail="Gold price not available")
 
 
 # place this function in router/goldRoutes.py along with your other endpoints
@@ -233,6 +241,14 @@ async def get_historical_price(date: str, currency: Optional[str] = Query("INR",
 
         return PricePerGramResponse(price_per_gram=price_val)
 
-    # All keys tried and failed
-    logger.error("All GoldAPI historical keys exhausted or failed for URL=%s", url)
-    raise HTTPException(status_code=503, detail="Upstream historical gold price service unavailable")
+    # 3) Final fallback: Check for the latest record in the same month
+    target_date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+    month_start = target_date_obj.replace(day=1)
+    month_end = (target_date_obj.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    q = select(GoldPrice).where(GoldPrice.fetch_date >= month_start).where(GoldPrice.fetch_date <= month_end).where(GoldPrice.currency == currency).order_by(GoldPrice.fetch_date.desc())
+    result = await session.exec(q)
+    latest_in_month = result.first()
+    if latest_in_month:
+        return PricePerGramResponse(price_per_gram=float(latest_in_month.price_per_gram))
+
+    raise HTTPException(status_code=503, detail="Gold price not available")
